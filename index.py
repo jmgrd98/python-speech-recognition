@@ -1,38 +1,20 @@
-import pyaudio
-import wave
-import speech_recognition as sr
+import requests
+from api_secret import API_SECRET
+import sys
 
-FRAMES_PER_BUFFER = 3200
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
+upload_endpoint = 'https://api.assemblyai.com/v2/upload'
+filename = sys.argv[1]
 
-p = pyaudio.PyAudio()
 
-stream = p.open(
-    format=FORMAT,
-    channels=CHANNELS,
-    rate=RATE,
-    input=True,
-    frames_per_buffer=FRAMES_PER_BUFFER,
-)
+def read_file(filename, chunk_size=5242880):
+    with open(filename, 'rb') as _file:
+        while True:
+            data = _file.read(chunk_size)
+            if not data:
+                break
+            yield data
 
-print('Start recording')
+headers = {'authorization': API_SECRET}
+response = requests.post(upload_endpoint, headers=headers, data=read_file(filename))
 
-seconds = 5
-frames = []
-
-for i in range(0, int(RATE /  FRAMES_PER_BUFFER * seconds)):
-    data = stream.read(FRAMES_PER_BUFFER)
-    frames.append(data)
-    
-stream.stop_stream()
-stream.close()
-p.terminate()
-
-obj = wave.open('output.wav', 'wb')
-obj.setnchannels(CHANNELS)
-obj.setsampwidth(p.get_sample_size(FORMAT))
-obj.setframerate(RATE)
-obj.writeframes(b"".join(frames))
-obj.close()
+print(response.json())
